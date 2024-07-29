@@ -4,7 +4,7 @@
 ##### Script for random resampling of data, univariate and multivariate linear
 #####     regression, and p-value tests
 ##### ===========
-##### v1.0.3
+##### v1.0.5
 ##### Merged functionality from previously seperate scripts into one script
 #####     with one config. Handles: random resampling of data from one input
 #####     file, univariate linear regression with p-value tests, and
@@ -31,7 +31,16 @@
 #####       list of DataFrames, allowing for a uniform output of across linear
 #####       regression models.
 ##### - (1.0.3) P-Value tests added for univariate
-##### - (1.0.4) Cleanup hardcoded values 
+##### - (1.0.4) Cleanup hardcoded values.
+##### - (1.0.5) Hardcoded values added for continued development
+##### - (1.0.5) Removed P-Value tests for intercept variable as it will not be
+#####       considered for analysis in univariate case. (Will not be included
+#####       in multivariate analysis either)
+##### - (1.0.5) Added Multivariate p-value analysis in similar fashion to 
+#####       univariate results. FDR correction does not consider intercept to
+#####       be included.
+##### - (1.0.5) Cleaned up un-necessary outputs to console to allow for easier
+#####       readability of debug statements (time to run sections)
 #Imports...
 import pandas as pd
 
@@ -52,11 +61,11 @@ DROP_COLUMNS = ['State']
 RESAMPLE_FOLDER_PATH = "./resampled"
 #NUMPY_SEED = time()
 NUMPY_SEED = 0 # Debug seed
-GENERATE_SAMPLES = 100 # Number of samples; 10000 = used samples for GST
-SAMPLES_SIZE = 10 # Number of rows In each sample; 25 = used for GST
+GENERATE_SAMPLES = 10000 # Number of samples; 10000 = used samples for GST
+SAMPLES_SIZE = 25 # Number of rows In each sample; 25 = used for GST
 
-DEPENDENT_TARGET = 'SELECTED_VARIABLE'
-INDEPENDENT_SELECT = ["SELECTED_INDEPENDENT_VARIABLE1","SELECTED_INDEPENDENT_VARIABLE2","SELECTED_INDEPENDENT_VARIABLE3"]
+DEPENDENT_TARGET = 'Mean6anti'
+INDEPENDENT_SELECT = ["% Without Internet","Median Household Income","Median age (years)","% Republican (2020 election)","Percent Reporting Ukr Ancestry","Percent reporting Ukr Place of Birth","% Bachelor's degree or higher","%Repub_CollegeorMore","%Repub_LessThanCollege","%Dem_CollegeorMore","%Dem_LessThanCollege","% Democrat (2020 election)"]
 PVAL_THRESH = 0.05
 
 
@@ -150,7 +159,7 @@ def resampleData(inputData,sampleCount,sampleSize,outputPath,numpySeed):
 
 #### Script...
 #GENERATE_SAMPLES = 10 # TEMPORARY DEBUG VAL
-print("LRAT v1.0.4 started.")
+print("LRAT v1.0.5 started.")
 
 ## Import input csv file, drop selected columns, output 'head' of table
 fullInputData = pd.read_csv(INPUT_CSV_FILE_PATH) # Input file should exist + be valid
@@ -165,10 +174,12 @@ print(fullInputData.head(5))
 
 
 ## Resample input DF to output folder
+# Resampling already outputs time
 sampleLocs = resampleData(fullInputData,GENERATE_SAMPLES,SAMPLES_SIZE,RESAMPLE_FOLDER_PATH,NUMPY_SEED)
 
 
 ## For every sample in resampled data...
+regressionStartTime = time()
 multivariateResults = pd.DataFrame()
 univariateResultList = [ pd.DataFrame() for _ in range(len(INDEPENDENT_SELECT)) ]
 
@@ -192,29 +203,30 @@ for i in range(len(univariateResultList)):
 print(multivariateResults)
 print(univariateResultList)
 print("---")
-
-multivariateResults.to_csv("./multivariateOutput.csv",index=False,header=True)
+print("Regression step has taken: "+str(time() - regressionStartTime)+" seconds to run.")
+#multivariateResults.to_csv("./multivariateOutput.csv",index=False,header=True)
 
 
 
 ## Perform p-value tests for intercept and any variables in dataframe
+univariateTestStartTime = time()
 for i in range(len(univariateResultList)): # Sets up additional columns in univariate results 
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),'intercept_Probability-t_Rank',pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_Probability-t_BonferroniThreshold",pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_Probability-t_Benjamini-HochbergThreshold",pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_BonferroniPass",pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_Benjamini-HochbergPass",pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),'var_Probability-t_Rank',pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"var_Probability-t_BonferroniThreshold",pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"var_Probability-t_Benjamini-HochbergThreshold",pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"var_BonferroniPass",pd.NA)
-    univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"var_Benjamini-HochbergPass",pd.NA)
+    # univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),'intercept_Probability-t_Rank',pd.NA)
+    # univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_Probability-t_BonferroniThreshold",pd.NA)
+    # univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_Probability-t_Benjamini-HochbergThreshold",pd.NA)
+    # univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_BonferroniPass",pd.NA)
+    # univariateResultList[i].insert(len(univariateResultList[i].columns.values.tolist()),"intercept_Benjamini-HochbergPass",pd.NA)
+    univariateResultList[i].insert(len(univariateResultList[i].columns.values),'var_Probability-t_Rank',pd.NA)
+    univariateResultList[i].insert(len(univariateResultList[i].columns.values),"var_Probability-t_BonferroniThreshold",pd.NA)
+    univariateResultList[i].insert(len(univariateResultList[i].columns.values),"var_Probability-t_Benjamini-HochbergThreshold",pd.NA)
+    univariateResultList[i].insert(len(univariateResultList[i].columns.values),"var_BonferroniPass",pd.NA)
+    univariateResultList[i].insert(len(univariateResultList[i].columns.values),"var_Benjamini-HochbergPass",pd.NA)
     
 # Univariate linear regression p-val tests
 # for selVar in multivariateResults.columns.values.tolist():
 #     if selVar.endswith("-t"): # Gets 'p-value' variables from DF for tests. Need to perform 
 #         print(selVar)
-for sampleNum in range(len(univariateResultList[0].index.values.tolist())): # For every 'sample' row in dataframe length (according to first entry)
+for sampleNum in range(len(univariateResultList[0].index.values)): # For every 'sample' row in dataframe length (according to first entry)
     univariateAnalysis = pd.DataFrame() # Used for 1 full sample
     for dfIndex,univariateDf in enumerate(univariateResultList): # For all dataframes in univariate result list, create analysis row
         # Get current variables which will be tested
@@ -226,37 +238,38 @@ for sampleNum in range(len(univariateResultList[0].index.values.tolist())): # Fo
 
         #columnsAvail = ["inSampleIndex","intercept_Probability-t","intercept_Probability-t_Rank","intercept_Probability-t_BonferroniThreshold","intercept_Probability-t_Benjamini-HochbergThreshold","intercept_BonferroniPass","intercept_Benjamini-HochbergPass","var_Probability-t","var_Probability-t_Rank","var_Probability-t_BonferroniThreshold","var_Probability-t_Benjamini-HochbergThreshold","var_BonferroniPass","var_Benjamini-HochbergPass"]
         extractedVals = [dfIndex]
-        extractedVals.append(univariateDf['intercept_Probability-t'][sampleNum])
-        extractedVals.extend([0,0,0,False,False]) # Filler for Rank through Pass/Fail
+        # extractedVals.append(univariateDf['intercept_Probability-t'][sampleNum])
+        # extractedVals.extend([0,0,0,False,False]) # Filler for Rank through Pass/Fail
         extractedVals.append(univariateDf[availVars[-1]][sampleNum]) # Get other variable (as univariate, only two 'variables' considered)
         extractedVals.extend([0,0,0,False,False]) # Filler for Rank through Pass/Fail
 
         #testDf = pd.DataFrame(data=[extractedVals],columns=["inSampleIndex","intercept_Probability-t","intercept_Probability-t_Rank","intercept_Probability-t_BonferroniThreshold","intercept_Probability-t_Benjamini-HochbergThreshold","intercept_BonferroniPass","intercept_Benjamini-HochbergPass","var_Probability-t","var_Probability-t_Rank","var_Probability-t_BonferroniThreshold","var_Probability-t_Benjamini-HochbergThreshold","var_BonferroniPass","var_Benjamini-HochbergPass"])
         #print(testDf)
-        univariateAnalysis = pd.concat([univariateAnalysis,pd.DataFrame(data=[extractedVals],columns=["inSampleIndex","intercept_Probability-t","intercept_Probability-t_Rank","intercept_Probability-t_BonferroniThreshold","intercept_Probability-t_Benjamini-HochbergThreshold","intercept_BonferroniPass","intercept_Benjamini-HochbergPass","var_Probability-t","var_Probability-t_Rank","var_Probability-t_BonferroniThreshold","var_Probability-t_Benjamini-HochbergThreshold","var_BonferroniPass","var_Benjamini-HochbergPass"])])
+        #univariateAnalysis = pd.concat([univariateAnalysis,pd.DataFrame(data=[extractedVals],columns=["inSampleIndex","intercept_Probability-t","intercept_Probability-t_Rank","intercept_Probability-t_BonferroniThreshold","intercept_Probability-t_Benjamini-HochbergThreshold","intercept_BonferroniPass","intercept_Benjamini-HochbergPass","var_Probability-t","var_Probability-t_Rank","var_Probability-t_BonferroniThreshold","var_Probability-t_Benjamini-HochbergThreshold","var_BonferroniPass","var_Benjamini-HochbergPass"])])
+        univariateAnalysis = pd.concat([univariateAnalysis,pd.DataFrame(data=[extractedVals],columns=["inSampleIndex","var_Probability-t","var_Probability-t_Rank","var_Probability-t_BonferroniThreshold","var_Probability-t_Benjamini-HochbergThreshold","var_BonferroniPass","var_Benjamini-HochbergPass"])])
 
     univariateAnalysis.reset_index(inplace=True,drop=True)
 
 
     # Compute p-tests (intercept)
-    univariateAnalysis.sort_values('intercept_Probability-t',ascending=True,inplace=True,ignore_index=True) # Sorts + resets index
-    for i in range(len(univariateAnalysis.index.values.tolist())):
-        univariateAnalysis.at[i,'intercept_Probability-t_Rank'] = i # Stores rank record for storage in final df
-        univariateAnalysis.at[i,'intercept_Probability-t_BonferroniThreshold'] = PVAL_THRESH/len(INDEPENDENT_SELECT) # alpha/hypothesis
-        if univariateAnalysis['intercept_Probability-t'][i] < univariateAnalysis['intercept_Probability-t_BonferroniThreshold'][i]:
-            univariateAnalysis.at[i,'intercept_BonferroniPass'] = True
-        else:
-            univariateAnalysis.at[i,'intercept_BonferroniPass'] = False # Redundant, kept for readability.
+    # univariateAnalysis.sort_values('intercept_Probability-t',ascending=True,inplace=True,ignore_index=True) # Sorts + resets index
+    # for i in range(len(univariateAnalysis.index.values.tolist())):
+    #     univariateAnalysis.at[i,'intercept_Probability-t_Rank'] = i # Stores rank record for storage in final df
+    #     univariateAnalysis.at[i,'intercept_Probability-t_BonferroniThreshold'] = PVAL_THRESH/len(INDEPENDENT_SELECT) # alpha/hypothesis
+    #     if univariateAnalysis['intercept_Probability-t'][i] < univariateAnalysis['intercept_Probability-t_BonferroniThreshold'][i]:
+    #         univariateAnalysis.at[i,'intercept_BonferroniPass'] = True
+    #     else:
+    #         univariateAnalysis.at[i,'intercept_BonferroniPass'] = False # Redundant, kept for readability.
 
-        univariateAnalysis.at[i,'intercept_Probability-t_Benjamini-HochbergThreshold'] = ((i+1)/len(INDEPENDENT_SELECT))*PVAL_THRESH # alpha*(rank/hypothesis)
-        if univariateAnalysis['intercept_Probability-t'][i] < univariateAnalysis['intercept_Probability-t_Benjamini-HochbergThreshold'][i]:
-            univariateAnalysis.at[i,'intercept_Benjamini-HochbergPass'] = True
-        else:
-            univariateAnalysis.at[i,'intercept_Benjamini-HochbergPass'] = False # Redundant.
+    #     univariateAnalysis.at[i,'intercept_Probability-t_Benjamini-HochbergThreshold'] = ((i+1)/len(INDEPENDENT_SELECT))*PVAL_THRESH # alpha*(rank/hypothesis)
+    #     if univariateAnalysis['intercept_Probability-t'][i] < univariateAnalysis['intercept_Probability-t_Benjamini-HochbergThreshold'][i]:
+    #         univariateAnalysis.at[i,'intercept_Benjamini-HochbergPass'] = True
+    #     else:
+    #         univariateAnalysis.at[i,'intercept_Benjamini-HochbergPass'] = False # Redundant.
 
     # Compute p-tests (var)
     univariateAnalysis.sort_values('var_Probability-t',ascending=True,inplace=True,ignore_index=True) # Sorts + resets index
-    for i in range(len(univariateAnalysis.index.values.tolist())):
+    for i in range(len(univariateAnalysis.index.values)):
         univariateAnalysis.at[i,'var_Probability-t_Rank'] = i # Stores rank record for storage in final df
         univariateAnalysis.at[i,'var_Probability-t_BonferroniThreshold'] = PVAL_THRESH/len(INDEPENDENT_SELECT) # alpha/hypothesis
         if univariateAnalysis['var_Probability-t'][i] < univariateAnalysis['var_Probability-t_BonferroniThreshold'][i]:
@@ -271,20 +284,17 @@ for sampleNum in range(len(univariateResultList[0].index.values.tolist())): # Fo
             univariateAnalysis.at[i,'var_Benjamini-HochbergPass'] = False # Redundant.
 
 
-    #print(univariateAnalysis.to_string())
+    #print(univariateAnalysis.to_string()) 
 
     # Output Analysis to original Dfs 
-    for i in range(len(univariateAnalysis.index.values.tolist())): # For each variable tested // row in analysis dataframe
+    for i in range(len(univariateAnalysis.index.values)): # For each variable tested // row in analysis dataframe
         outputIndex = univariateAnalysis['inSampleIndex'][i] # Selects the dataframe to output to 
 
-        univariateResultList[outputIndex].at[sampleNum,"intercept_Probability-t_Rank"] = univariateAnalysis["intercept_Probability-t_Rank"][i]
-        #print(univariateAnalysis["intercept_Probability-t_Rank"][i])
-        #print(univariateResultList[outputIndex].to_string())
-        
-        univariateResultList[outputIndex].at[sampleNum,"intercept_Probability-t_BonferroniThreshold"] = univariateAnalysis["intercept_Probability-t_BonferroniThreshold"][i]
-        univariateResultList[outputIndex].at[sampleNum,"intercept_Probability-t_Benjamini-HochbergThreshold"] = univariateAnalysis["intercept_Probability-t_Benjamini-HochbergThreshold"][i]
-        univariateResultList[outputIndex].at[sampleNum,"intercept_BonferroniPass"] = univariateAnalysis["intercept_BonferroniPass"][i]
-        univariateResultList[outputIndex].at[sampleNum,"intercept_Benjamini-HochbergPass"] = univariateAnalysis["intercept_Benjamini-HochbergPass"][i]
+        #univariateResultList[outputIndex].at[sampleNum,"intercept_Probability-t_Rank"] = univariateAnalysis["intercept_Probability-t_Rank"][i]
+        # univariateResultList[outputIndex].at[sampleNum,"intercept_Probability-t_BonferroniThreshold"] = univariateAnalysis["intercept_Probability-t_BonferroniThreshold"][i]
+        # univariateResultList[outputIndex].at[sampleNum,"intercept_Probability-t_Benjamini-HochbergThreshold"] = univariateAnalysis["intercept_Probability-t_Benjamini-HochbergThreshold"][i]
+        # univariateResultList[outputIndex].at[sampleNum,"intercept_BonferroniPass"] = univariateAnalysis["intercept_BonferroniPass"][i]
+        # univariateResultList[outputIndex].at[sampleNum,"intercept_Benjamini-HochbergPass"] = univariateAnalysis["intercept_Benjamini-HochbergPass"][i]
         univariateResultList[outputIndex].at[sampleNum,"var_Probability-t_Rank"] = univariateAnalysis["var_Probability-t_Rank"][i]
         univariateResultList[outputIndex].at[sampleNum,"var_Probability-t_BonferroniThreshold"] = univariateAnalysis["var_Probability-t_BonferroniThreshold"][i]
         univariateResultList[outputIndex].at[sampleNum,"var_Probability-t_Benjamini-HochbergThreshold"] = univariateAnalysis["var_Probability-t_Benjamini-HochbergThreshold"][i]
@@ -293,12 +303,72 @@ for sampleNum in range(len(univariateResultList[0].index.values.tolist())): # Fo
 
     
     #print(univariateResultList[outputIndex].to_string())
-    #input()     
+    #input()  
 
+print(univariateResultList)   
 
 for i in range(len(univariateResultList)):
     outputLoc = "./univariateOutput"+(INDEPENDENT_SELECT[i].replace(" ","_").replace("%","_").replace("(","-").replace(")","-"))+".csv"
     univariateResultList[i].to_csv(outputLoc,index=False,header=True)
 
+print("Univariate pvalue tests took "+str(time() - univariateTestStartTime)+" seconds.")
 
-#...
+# Multivariate linear regression p-val tests
+# Get the variables for which to run the p-value analysis for...
+multivariateTestStartTime=time()
+multivariatePVars = []
+for selVar in multivariateResults.columns.values.tolist():
+    if selVar.endswith("Probability-t"):
+        multivariatePVars.append(selVar)
+
+multivariatePVars.remove("intercept_Probability-t") # Drop intercept p-val from consideration 
+print(multivariatePVars)
+
+# Setup output columns in multivariate results df
+for addVar in multivariatePVars:
+    multivariateResults.insert(len(multivariateResults.columns.values),addVar+'_Rank',pd.NA)
+    multivariateResults.insert(len(multivariateResults.columns.values),addVar+"_BonferroniThreshold",pd.NA)
+    multivariateResults.insert(len(multivariateResults.columns.values),addVar+"_Benjamini-HochbergThreshold",pd.NA)
+    multivariateResults.insert(len(multivariateResults.columns.values),addVar+"_BonferroniPass",pd.NA)
+    multivariateResults.insert(len(multivariateResults.columns.values),addVar+"_Benjamini-HochbergPass",pd.NA)
+
+#print(multivariateResults.to_string())
+
+for sampleNum in range(len(multivariateResults.index.values)): # For each sample in multivariate...
+    multivariateAnalysis = pd.DataFrame() # Per sample analysis dataframe
+    #columns=["varIndex","var_Probability-t","var_Probability-t_Rank","var_Probability-t_BonferroniThreshold","var_Probability-t_Benjamini-HochbergThreshold","var_BonferroniPass","var_Benjamini-HochbergPass"]
+
+    for varIndex,varName in enumerate(multivariatePVars): # Extract needed values 
+        extractedVals = [varIndex,multivariateResults[varName][sampleNum],0,0,0,False,False] # Needed data extracted per-sample
+        multivariateAnalysis = pd.concat([multivariateAnalysis,pd.DataFrame(data=[extractedVals],columns=["varIndex","var_Probability-t","var_Probability-t_Rank","var_Probability-t_BonferroniThreshold","var_Probability-t_Benjamini-HochbergThreshold","var_BonferroniPass","var_Benjamini-HochbergPass"])])
+
+    multivariateAnalysis.sort_values('var_Probability-t',ascending=True,inplace=True,ignore_index=True) # Sort vals + reset index
+    for i in range(len(multivariateAnalysis.index.values)):
+        multivariateAnalysis.at[i,'var_Probability-t_Rank'] = i # Store current Rank
+        multivariateAnalysis.at[i,'var_Probability-t_BonferroniThreshold'] = PVAL_THRESH/len(INDEPENDENT_SELECT)
+        if(multivariateAnalysis['var_Probability-t'][i] < multivariateAnalysis['var_Probability-t_BonferroniThreshold'][i]):
+            multivariateAnalysis.at[i,'var_BonferroniPass'] = True
+        else:
+            multivariateAnalysis.at[i,'var_BonferroniPass'] = False # Redundant
+    
+        multivariateAnalysis.at[i,'var_Probability-t_Benjamini-HochbergThreshold'] = ((i+1)/len(INDEPENDENT_SELECT))*PVAL_THRESH # alpha*(rank/hypothesis)
+        if multivariateAnalysis['var_Probability-t'][i] < multivariateAnalysis['var_Probability-t_Benjamini-HochbergThreshold'][i]:
+            multivariateAnalysis.at[i,'var_Benjamini-HochbergPass'] = True
+        else:
+            multivariateAnalysis.at[i,'var_Benjamini-HochbergPass'] = False # Redundant.
+    
+    # Output results
+    #print(multivariateAnalysis.to_string())
+    for i in range(len(multivariateAnalysis.index.values)):
+        outputVar = multivariatePVars[multivariateAnalysis['varIndex'][i]] # Gets variable at varIndex for current row in analysis
+        
+        multivariateResults.at[sampleNum,outputVar+"_Rank"] = multivariateAnalysis['var_Probability-t_Rank'][i]
+        multivariateResults.at[sampleNum,outputVar+"_BonferroniThreshold"] = multivariateAnalysis['var_Probability-t_BonferroniThreshold'][i]
+        multivariateResults.at[sampleNum,outputVar+"_Benjamini-HochbergThreshold"] = multivariateAnalysis['var_Probability-t_Benjamini-HochbergThreshold'][i]
+        multivariateResults.at[sampleNum,outputVar+"_BonferroniPass"] = multivariateAnalysis['var_BonferroniPass'][i]
+        multivariateResults.at[sampleNum,outputVar+"_Benjamini-HochbergPass"] = multivariateAnalysis['var_Benjamini-HochbergPass'][i]
+
+#print(multivariateResults.to_string())
+multivariateResults.to_csv("./multivariateOutput.csv",index=False,header=True)
+
+print("Multivariate p-tests took "+str(time()-multivariateTestStartTime)+" seconds.")
